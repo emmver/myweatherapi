@@ -33,13 +33,42 @@ def list_locations():
 def latest_forecast():
     try:
         query = f"""
-        SELECT location, MAX(date) as latest_date
-        FROM `{project_id}.weather_data.forecasts`
-        GROUP BY location
+        WITH
+            latest_dates AS (
+            SELECT
+                location,
+                MAX(date) AS latest_date
+            FROM
+                `margeraweatherapp.weather_data.forecasts`
+            GROUP BY
+                location )
+            SELECT
+            f.location,
+            f.date AS latest_date,
+            f.temperature,
+            f.precipitation,
+            f.wind_speed,
+            f.wind_direction
+            FROM
+            `margeraweatherapp.weather_data.forecasts` f
+            JOIN
+            latest_dates ld
+            ON
+            f.location = ld.location
+            AND f.date = ld.latest_date
         """
         logging.info(f"Executing query: {query}")
         results = client.query(query).result()
-        forecasts = [{'location': row['location'], 'latest_date': row['latest_date']} for row in results]
+        forecasts = [
+                        {
+                            'location': row['location'],
+                            'latest_date': row['latest_date'],
+                            'temperature': row['temperature'],
+                            'precipitation': row['precipitation'],
+                            'wind_speed': row['wind_speed'],
+                            'wind_direction': row['wind_direction']
+                        } for row in results
+                    ]
         logging.info(f"Latest forecasts retrieved: {forecasts}")
         return jsonify(forecasts)
     except Exception as e:
